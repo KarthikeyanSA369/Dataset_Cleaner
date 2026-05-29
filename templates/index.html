@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Wrangler | Smart CSV Cleaner</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            /* Light Theme Variables */
+            --bg-color: #f0f4f8;
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --primary-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            --upload-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            --border-color: #e2e8f0;
+            --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            --blob-color-1: #e0f2fe;
+            --blob-color-2: #dcfce7;
+            
+            /* Status Colors */
+            --success-bg: #dcfce7;
+            --success-text: #166534;
+            --error-bg: #fee2e2;
+            --error-text: #991b1b;
+        }
+
+        /* Dark Theme Variables */
+        .dark-mode {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+            --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+            --blob-color-1: #1e3a8a;
+            --blob-color-2: #064e3b;
+            
+            --success-bg: #064e3b;
+            --success-text: #6ee7b7;
+            --error-bg: #7f1d1d;
+            --error-text: #fca5a5;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            transition: background-color 0.6s cubic-bezier(0.4, 0, 0.2, 1), color 0.6s ease;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Animated Background Blobs */
+        .bg-blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: -1;
+            opacity: 0.6;
+            transition: background-color 0.6s ease;
+            animation: float 10s infinite alternate;
+        }
+        .blob-1 { top: -10%; left: -10%; width: 500px; height: 500px; background: var(--blob-color-1); }
+        .blob-2 { bottom: -10%; right: -10%; width: 400px; height: 400px; background: var(--blob-color-2); animation-delay: -5s; }
+
+        @keyframes float {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(30px, 50px); }
+        }
+
+        /* Main Container */
+        .main-container {
+            width: 100%;
+            max-width: 600px;
+            padding: 1.5rem;
+            z-index: 10;
+        }
+
+        .upload-card {
+            background: var(--card-bg);
+            border-radius: 24px;
+            box-shadow: var(--shadow-xl);
+            padding: 2.5rem;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid var(--border-color);
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Header & Badge */
+        .header-section {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        h2 {
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            font-size: 1.8rem;
+            letter-spacing: -0.025em;
+        }
+
+        .feature-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(59, 130, 246, 0.1);
+            color: #2563eb;
+            padding: 6px 16px;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .dark-mode .feature-badge {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+        }
+
+        /* Drag and Drop Zone */
+        .drop-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: 16px;
+            padding: 3rem 1.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background-color: rgba(0,0,0,0.01);
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+
+        .drop-zone:hover, .drop-zone.drag-over {
+            border-color: #3b82f6;
+            background-color: rgba(59, 130, 246, 0.05);
+            transform: scale(1.01);
+        }
+
+        .drop-icon {
+            font-size: 3rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+            transition: color 0.3s ease;
+        }
+        
+        .drop-zone:hover .drop-icon { color: #3b82f6; }
+
+        .file-info {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex-direction: column;
+        }
+        
+        .file-icon-large {
+            font-size: 4rem;
+            color: #10b981;
+            margin-bottom: 0.5rem;
+        }
+
+        .file-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+            word-break: break-all;
+        }
+
+        .file-size {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        /* Buttons */
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 1rem;
+            border: none;
+            border-radius: 12px;
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:active { transform: scale(0.98); }
+
+        .btn-choose {
+            background: var(--bg-color);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+        }
+        .btn-choose:hover { border-color: #3b82f6; color: #3b82f6; }
+
+        .btn-upload {
+            background: var(--upload-gradient);
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+        .btn-upload:hover:not(:disabled) {
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+            transform: translateY(-2px);
+        }
+        .btn-upload:disabled {
+            background: var(--text-muted);
+            cursor: not-allowed;
+            opacity: 0.7;
+            box-shadow: none;
+        }
+
+        /* Status & Progress */
+        .status-container {
+            margin-top: 1.5rem;
+            text-align: left;
+        }
+
+        .status-message {
+            padding: 1rem;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            display: none;
+            animation: slideUp 0.4s ease forwards;
+        }
+        
+        .status-message.success { background: var(--success-bg); color: var(--success-text); }
+        .status-message.error { background: var(--error-bg); color: var(--error-text); }
+        
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            border-top: 1px solid rgba(0,0,0,0.1);
+            padding-top: 8px;
+        }
+
+        /* Loading Animation */
+        .loading-overlay {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(0,0,0,0.1);
+            border-left-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+        .dark-mode .spinner { border-color: rgba(255,255,255,0.1); border-left-color: #60a5fa; }
+
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        @keyframes slideUp { 
+            from { opacity: 0; transform: translateY(10px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+
+        /* Processing Body Animation */
+        body.uploading .upload-card {
+            border-color: #3b82f6;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bg-blob blob-1"></div>
+    <div class="bg-blob blob-2"></div>
+
+    <div class="main-container">
+        <div class="upload-card">
+            <div class="header-section">
+                <h2>CSV Wrangler 📊</h2>
+                <div class="feature-badge">
+                    <i class="fas fa-magic"></i>
+                    <span>Cleans the null and duplicates</span>
+                </div>
+            </div>
+
+            <form id="uploadForm" enctype="multipart/form-data">
+                <!-- Drag & Drop Area -->
+                <div class="drop-zone" id="dropZone">
+                    <input type="file" id="csvFileInput" name="csvFile" accept=".csv" style="display: none;">
+                    
+                    <!-- Empty State -->
+                    <div id="emptyState">
+                        <div class="drop-icon">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                        </div>
+                        <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem;">Drag & Drop CSV here</h3>
+                        <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0;">or click to browse files</p>
+                    </div>
+
+                    <!-- Selected File State -->
+                    <div class="file-info" id="fileInfo">
+                        <i class="fas fa-file-csv file-icon-large"></i>
+                        <div class="file-name" id="fileName">data.csv</div>
+                        <div class="file-size" id="fileSize">1.2 MB</div>
+                        <div style="margin-top: 10px; font-size: 0.8rem; color: #ef4444; cursor: pointer;" id="removeFile">
+                            <i class="fas fa-times-circle"></i> Remove
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="btn-group">
+                    <button type="button" class="btn btn-choose" id="chooseFileBtn">
+                        <i class="fas fa-folder-open"></i> Browse
+                    </button>
+                    <button type="submit" class="btn btn-upload" id="uploadBtn" disabled>
+                        <i class="fas fa-rocket"></i> Upload & Clean
+                    </button>
+                </div>
+            </form>
+
+            <!-- Status & Result Area -->
+            <div id="statusArea" class="status-container">
+                
+                <!-- Loading State -->
+                <div id="loadingState" class="loading-overlay">
+                    <div class="spinner"></div>
+                    <div style="font-weight: 500;">Analyzing & Cleaning Data...</div>
+                </div>
+
+                <!-- Success/Error Message -->
+                <div id="resultMessage" class="status-message"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Elements ---
+            const body = document.body;
+            const form = document.getElementById('uploadForm');
+            const fileInput = document.getElementById('csvFileInput');
+            const dropZone = document.getElementById('dropZone');
+            const emptyState = document.getElementById('emptyState');
+            const fileInfo = document.getElementById('fileInfo');
+            const fileName = document.getElementById('fileName');
+            const fileSize = document.getElementById('fileSize');
+            const removeFileBtn = document.getElementById('removeFile');
+            const chooseBtn = document.getElementById('chooseFileBtn');
+            const uploadBtn = document.getElementById('uploadBtn');
+            const loadingState = document.getElementById('loadingState');
+            const resultMessage = document.getElementById('resultMessage');
+            
+            // --- Configuration ---
+            // Set to true to simulate a successful backend response for demo purposes
+            const DEMO_MODE = true; 
+
+            // --- Helpers ---
+            const formatBytes = (bytes, decimals = 2) => {
+                if (!+bytes) return '0 Bytes';
+                const k = 1024;
+                const dm = decimals < 0 ? 0 : decimals;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+            };
+
+            const resetUI = () => {
+                fileInput.value = '';
+                emptyState.style.display = 'block';
+                fileInfo.style.display = 'none';
+                uploadBtn.disabled = true;
+                uploadBtn.innerHTML = '<i class="fas fa-rocket"></i> Upload & Clean';
+                resultMessage.style.display = 'none';
+                resultMessage.className = 'status-message'; // remove success/error classes
+                body.classList.remove('dark-mode');
+                body.classList.remove('uploading');
+            };
+
+            const handleFileSelect = (file) => {
+                if (file && file.type === "text/csv" || file.name.endsWith('.csv')) {
+                    emptyState.style.display = 'none';
+                    fileInfo.style.display = 'flex';
+                    fileName.textContent = file.name;
+                    fileSize.textContent = formatBytes(file.size);
+                    uploadBtn.disabled = false;
+                    
+                    // Remove previous status
+                    resultMessage.style.display = 'none';
+                    // Keep light mode when selecting new file (as per original logic)
+                    body.classList.remove('dark-mode'); 
+                } else {
+                    alert("Please select a valid CSV file.");
+                    resetUI();
+                }
+            };
+
+            // --- Event Listeners ---
+
+            // Click Triggers
+            chooseBtn.addEventListener('click', () => fileInput.click());
+            dropZone.addEventListener('click', (e) => {
+                if(e.target !== removeFileBtn && !removeFileBtn.contains(e.target)) {
+                    fileInput.click();
+                }
+            });
+
+            // File Input Change
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) handleFileSelect(e.target.files[0]);
+            });
+
+            // Remove File
+            removeFileBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                resetUI();
+            });
+
+            // Drag & Drop
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, highlight, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, unhighlight, false);
+            });
+
+            function highlight() {
+                dropZone.classList.add('drag-over');
+            }
+
+            function unhighlight() {
+                dropZone.classList.remove('drag-over');
+            }
+
+            dropZone.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                if (files.length > 0) {
+                    fileInput.files = files; // Assign to input for form submission
+                    handleFileSelect(files[0]);
+                }
+            });
+
+            // --- Form Submission ---
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                if (fileInput.files.length === 0) return;
+
+                // UI Updates for Processing
+                uploadBtn.disabled = true;
+                body.classList.add('uploading');
+                loadingState.style.display = 'flex';
+                resultMessage.style.display = 'none';
+                dropZone.style.pointerEvents = 'none'; // Lock interactions
+                chooseBtn.style.opacity = '0.5';
+                chooseBtn.style.pointerEvents = 'none';
+
+                const formData = new FormData();
+                formData.append("csvFile", fileInput.files[0]);
+
+                try {
+                    let data;
+                    
+                    if (DEMO_MODE) {
+                        // --- SIMULATION ---
+                        console.log("Running in Demo Mode. Simulating server request...");
+                        await new Promise(r => setTimeout(r, 2500)); // Fake delay
+                        
+                        // Mock Success Response
+                        data = {
+                            message: "Data wrangled successfully!",
+                            cleaned_file: "data_cleaned_v1.csv",
+                            rows_removed_na: 12,
+                            rows_removed_duplicates: 5
+                        };
+                    } else {
+                        // --- REAL FETCH ---
+                        const response = await fetch("/upload", { method: "POST", body: formData });
+                        data = await response.json();
+                        if (!response.ok) throw new Error(data.message || "Upload failed");
+                    }
+
+                    // Success UI
+                    loadingState.style.display = 'none';
+                    resultMessage.classList.add('success');
+                    resultMessage.style.display = 'block';
+                    resultMessage.innerHTML = `
+                        <div style="font-weight: 600; font-size: 1.1rem; margin-bottom: 8px;">
+                            <i class="fas fa-check-circle"></i> ${data.message}
+                        </div>
+                        <div style="margin-bottom: 12px;">
+                            📥 <a href="${DEMO_MODE ? '#' : '/download/'+data.cleaned_file}" target="_blank" 
+                            style="text-decoration: underline; font-weight: 600;">
+                            ${data.cleaned_file}</a>
+                        </div>
+                        <div class="stat-row">
+                            <span><i class="fas fa-broom"></i> Nulls Removed:</span>
+                            <strong>${data.rows_removed_na}</strong>
+                        </div>
+                        <div class="stat-row">
+                            <span><i class="fas fa-copy"></i> Duplicates Removed:</span>
+                            <strong>${data.rows_removed_duplicates}</strong>
+                        </div>
+                    `;
+                    
+                    // Trigger Dark Mode as per original flow logic
+                    body.classList.add('dark-mode');
+                    
+                    // Unlock interactions for new file
+                    dropZone.style.pointerEvents = 'auto';
+                    chooseBtn.style.opacity = '1';
+                    chooseBtn.style.pointerEvents = 'auto';
+                    
+                    // We keep the button disabled because the file is "done", 
+                    // user must pick a new file to start over (or we could enable download button)
+                    uploadBtn.innerHTML = '<i class="fas fa-check"></i> Done';
+
+                } catch (error) {
+                    // Error UI
+                    loadingState.style.display = 'none';
+                    resultMessage.classList.add('error');
+                    resultMessage.style.display = 'block';
+                    resultMessage.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${error.message}`;
+                    
+                    body.classList.remove('uploading');
+                    uploadBtn.disabled = false;
+                    dropZone.style.pointerEvents = 'auto';
+                    chooseBtn.style.opacity = '1';
+                    chooseBtn.style.pointerEvents = 'auto';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
